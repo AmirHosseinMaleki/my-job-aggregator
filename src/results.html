@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Manager Job Aggregator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        h1 {
+            text-align: center;
+            color: #2557a7;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #6c757d;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        .stats {
+            text-align: center;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .filters {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .filters button {
+            background-color: #f3f2f1;
+            border: 1px solid #d4d2d0;
+            border-radius: 4px;
+            padding: 8px 16px;
+            margin: 0 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filters button:hover {
+            background-color: #e1dfdd;
+        }
+        .filters button.active {
+            background-color: #2557a7;
+            color: white;
+        }
+        .job-listing {
+            border: 1px solid #d4d2d0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            background: white;
+            transition: box-shadow 0.2s;
+        }
+        .job-listing:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .job-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2557a7;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .job-title a {
+            color: #2557a7;
+            text-decoration: none;
+        }
+        .job-title a:hover {
+            text-decoration: underline;
+        }
+        .job-company {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #495057;
+        }
+        .job-location {
+            color: #6f6f6f;
+            margin-bottom: 10px;
+        }
+        .job-remote {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+        .job-source {
+            color: #6f6f6f;
+            font-size: 12px;
+            text-align: right;
+            margin-top: 10px;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 10px;
+        }
+        .no-jobs {
+            text-align: center;
+            padding: 30px;
+            color: #6f6f6f;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #6f6f6f;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #6c757d;
+            font-size: 14px;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <h1>Product Manager Job Aggregator</h1>
+    <p class="subtitle">Built with Crawlee - Demonstrating web scraping for job search automation</p>
+    
+    <div class="stats">
+        <strong id="total-jobs">Loading...</strong> product manager positions found in Prague and Remote
+    </div>
+    
+    <div class="filters">
+        <button id="all" class="active">All Locations (<span id="count-all">0</span>)</button>
+        <button id="prague">Prague (<span id="count-prague">0</span>)</button>
+        <button id="remote">Remote (<span id="count-remote">0</span>)</button>
+    </div>
+    
+    <div id="job-listings">
+        <div class="loading">Loading job listings...</div>
+    </div>
+    
+    <div class="footer">
+        <p>This is a demonstration project created for the Product Manager for Developer Experience role at Apify.</p>
+        <p>Built using Crawlee, TypeScript, and Playwright for web automation.</p>
+    </div>
+    
+    <script>
+        // Function to load jobs from the combined dataset
+        async function loadJobs() {
+            try {
+                const response = await fetch('/jobs-data.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Could not load job data`);
+                }
+                const jobs = await response.json();
+                
+                if (!Array.isArray(jobs)) {
+                    throw new Error('Expected an array of jobs');
+                }
+                
+                console.log(`Loaded ${jobs.length} jobs`);
+                
+                if (jobs.length === 0) {
+                    document.getElementById('job-listings').innerHTML = `
+                        <div class="no-jobs">
+                            <h3>No jobs found</h3>
+                            <p>The dataset is empty. Please run the crawler first:</p>
+                            <p><code>npm start</code></p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Update counts
+                updateCounts(jobs);
+                
+                // Display jobs and setup filters
+                displayJobs(jobs);
+                setupFilters(jobs);
+                
+                document.getElementById('total-jobs').textContent = jobs.length;
+                
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+                document.getElementById('job-listings').innerHTML = `
+                    <div class="no-jobs">
+                        <h3>Could not load job listings</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Make sure you've run: <code>npm run prepare-results</code></p>
+                        <p>This combines all the individual JSON files into one file for the web interface.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Function to update filter counts
+        function updateCounts(jobs) {
+            const allCount = jobs.length;
+            const pragueCount = jobs.filter(job => 
+                job.location && job.location.toLowerCase().includes('prague') && !job.isRemote).length;
+            const remoteCount = jobs.filter(job => job.isRemote === true).length;
+            
+            document.getElementById('count-all').textContent = allCount;
+            document.getElementById('count-prague').textContent = pragueCount;
+            document.getElementById('count-remote').textContent = remoteCount;
+        }
+        
+        // Function to display jobs on the page
+        function displayJobs(jobs, filter = 'all') {
+            const jobListingsElement = document.getElementById('job-listings');
+            
+            // Filter jobs based on selection
+            let filteredJobs = jobs;
+            if (filter === 'prague') {
+                filteredJobs = jobs.filter(job => 
+                    job.location && job.location.toLowerCase().includes('prague') && !job.isRemote);
+            } else if (filter === 'remote') {
+                filteredJobs = jobs.filter(job => job.isRemote === true);
+            }
+            
+            // Show message if no jobs found for filter
+            if (filteredJobs.length === 0) {
+                jobListingsElement.innerHTML = `
+                    <div class="no-jobs">
+                        <h3>No jobs found for this filter</h3>
+                        <p>Try selecting a different location filter above.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Create HTML for each job listing
+            jobListingsElement.innerHTML = filteredJobs.map(job => `
+                <div class="job-listing">
+                    <h3 class="job-title">
+                        ${job.url ? `<a href="${job.url}" target="_blank" rel="noopener">${job.title || 'Untitled Position'}</a>` : (job.title || 'Untitled Position')}
+                        ${job.isRemote ? '<span class="job-remote">Remote</span>' : ''}
+                    </h3>
+                    <div class="job-company">${job.company || 'Company not specified'}</div>
+                    <div class="job-location">${job.location || 'Location not specified'}</div>
+                    <div class="job-source">Source: ${job.source || 'Unknown'}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Set up filter buttons
+        function setupFilters(jobs) {
+            const buttons = document.querySelectorAll('.filters button');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Update active button
+                    buttons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    // Apply filter
+                    displayJobs(jobs, button.id);
+                });
+            });
+        }
+        
+        // Load jobs when page loads
+        window.addEventListener('load', loadJobs);
+    </script>
+</body>
+</html>
